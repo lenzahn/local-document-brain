@@ -1,34 +1,41 @@
 # Local Document Brain
 
-Private document chat that runs entirely on one Windows PC. Ask questions about
+Private document chat that runs entirely on one machine. Ask questions about
 technical PDFs — tables and diagrams included — and get answers grounded in the
-actual pages. Nothing is sent to the internet, before or after setup.
+real pages. Nothing leaves the computer, before or after setup.
 
-Three maintained open-source projects, wired together. Nothing bespoke.
+Three maintained open-source projects, wired together. Nothing bespoke, and
+every setting lives in `docker-compose.yml`.
 
-| Project | Role |
-|---|---|
-| [Ollama](https://github.com/ollama/ollama) | Runs the AI models |
-| [Open WebUI](https://github.com/open-webui/open-webui) | Chat interface, chunking, embedding, retrieval |
-| [Docling](https://github.com/docling-project/docling) | Reads PDFs: text, tables, figures, charts |
+| Component | Role | Source |
+|---|---|---|
+| [Ollama](https://github.com/ollama/ollama) | Runs the AI models | Host application |
+| [Open WebUI](https://github.com/open-webui/open-webui) | Chat, chunking, embedding, retrieval | `open-webui` service |
+| [Docling](https://github.com/docling-project/docling) | Reads PDFs: text, tables, figures | `docling` service |
 
 ---
 
 ## If you are an AI agent
 
-1. Use the exact commands and values below. Do not invent names or versions.
-2. Run one step at a time and check the output before continuing.
-3. If a command fails, stop and paste the exact error. Do not guess a fix.
-4. Ask the human before the downloads in steps 3 and 4.
-5. Steps marked **[HUMAN]** are browser clicks. You cannot do them. Ask, then wait.
+1. Follow these steps in order. Use the exact commands and values given.
+2. Do not invent model names, versions or URLs. Everything needed is here.
+3. After each command, check the output before continuing.
+4. If a command fails, stop and report the exact error. Do not guess a fix.
+5. Step 5 is a browser action for the human. You cannot do it. Ask, then wait.
 
 ---
 
 ## Requirements
 
-- **Ollama** — https://ollama.com/download
-- **Docker Desktop** — https://www.docker.com/products/docker-desktop/
-- Windows 10/11, 16 GB RAM or more, 20 GB free disk space
+| | |
+|---|---|
+| Ollama | https://ollama.com/download |
+| Docker Desktop | https://www.docker.com/products/docker-desktop/ |
+| Machine | 16 GB RAM, 20 GB free disk, Windows 10/11, macOS or Linux |
+
+Downloads, once: **8.7 GB** of Docling image on x86-64 — 4.4 GB on ARM —
+([Docling Serve container images](https://github.com/docling-project/docling-serve#container-images)),
+plus roughly **9 GB** of models.
 
 Docker is required. If the machine cannot run Docker, this stack is not suitable
 for it.
@@ -37,29 +44,26 @@ for it.
 
 ## Setup
 
-### 1. Install the two prerequisites
+### 1. Install the prerequisites
 
-Install Ollama and Docker Desktop. Start Docker Desktop, then confirm it works:
+Install Ollama and Docker Desktop. Start Docker Desktop, then confirm:
 
-```powershell
+```bash
 docker info
 ```
 
 This must print a block of information, not an error.
 
-### 2. Copy this folder to the machine
+### 2. Clone this repository
 
-Open PowerShell inside the folder:
-
-```powershell
-Set-Location <path-to-this-folder>
+```bash
+git clone https://github.com/lenzahn/local-document-brain
+cd local-document-brain
 ```
 
 ### 3. Start the services
 
-First run downloads roughly 9 GB of container images.
-
-```powershell
+```bash
 docker compose up -d
 docker compose ps
 ```
@@ -67,52 +71,50 @@ docker compose ps
 Both `open-webui` and `docling` must show `running`. If either shows `exited` or
 `restarting`, run `docker compose logs` and stop.
 
-### 4. Download the AI models
+### 4. Download the models
 
-Roughly 9 GB.
-
-```powershell
+```bash
 ollama pull granite4.2:8b
 ollama pull ibm/granite3.3-vision:2b
 ollama pull nomic-embed-text
 ollama list
 ```
 
-`ollama list` must show all three names.
+`ollama list` must show all three.
 
-### 5. **[HUMAN]** Configure the chat interface
+### 5. Raise the memory window
 
-Open **http://localhost:3000** and create the first account. It automatically
-becomes the administrator. Then, in **Admin Settings → Documents**:
+Ollama's default context window is small, so set it once at the operating
+system level. On Windows:
 
-| Setting | Value |
-|---|---|
-| Content Extraction Engine | `Docling` |
-| Extraction Engine URL | `http://docling:5001` |
-| Embedding Engine | `Ollama` |
-| Embedding Model | `nomic-embed-text` |
-| Docling Parameters | paste the entire contents of `docling-settings.json` |
+```powershell
+setx OLLAMA_CONTEXT_LENGTH 16384
+```
 
-Save, then press `Ctrl+F5`. Open WebUI can start before the models finish
-downloading, so the model list may look empty until the page is refreshed.
+Then quit Ollama from the system tray and start it again, so it picks up the
+new value. (The Ollama app also exposes this as a **Context Length** slider in
+its own settings.) See
+[Ollama — context length](https://docs.ollama.com/context-length).
 
-### 6. **[HUMAN]** Raise the model's memory window
+Leave `num_ctx` **blank** in Open WebUI. A value typed there overrides Ollama's
+setting, and its control pre-fills with `2048`, which caps the model at a few
+pages. See
+[Open WebUI — starting with Ollama](https://docs.openwebui.com/getting-started/quick-start/connect-a-provider/starting-with-ollama).
 
-In the **Ollama app** → Settings → **Context Length = 16384**.
+### 6. Open it
 
-Then in Open WebUI, open **Chat Controls → Advanced Parameters** and make sure
-**`num_ctx` is blank**.
+Go to **http://localhost:3000** and create the first account. It becomes the
+administrator. Press `Ctrl+F5` once — Open WebUI can boot before the models
+finish downloading, so the model list may look empty until the page reloads.
 
-> This step is not optional. Ollama's default window is small, and Open WebUI's
-> `num_ctx` box pre-fills with `2048`. If `num_ctx` has any value, it overrides
-> Ollama and the model sees only a few pages — then answers incorrectly without
-> warning. This is the single most common cause of bad results.
+That is the whole setup. There is nothing to configure in Open WebUI's admin
+panel; step 7 below only confirms it.
 
 ### 7. Verify
 
-```powershell
-curl.exe -s -o NUL -w "%{http_code}" http://localhost:5001/ui
-curl.exe -s -o NUL -w "%{http_code}" http://localhost:3000
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:5001/ui   # reader
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000      # website
 ```
 
 The first must print `200`. The second must print `200`, `302` or `307`.
@@ -121,20 +123,48 @@ The first must print `200`. The second must print `200`, `302` or `307`.
 
 ## Using it
 
-1. **Workspace → Knowledge → Create Knowledge**, and name it.
-2. Drag your PDFs in. Wait for processing to finish — a 15-page PDF with figure
-   descriptions can take several minutes.
-3. Start a new chat, choose the model `granite4.2:8b`, and type `#` to attach
-   the knowledge base.
-4. Ask your question.
+1. **Workspace → Knowledge → Create Knowledge**, name it.
+2. Drag PDFs in and wait. A 15-page PDF with figure descriptions takes minutes.
+3. New chat → model `granite4.2:8b` → type `#` and pick the knowledge base.
+4. Ask.
 
 For short documents, switch on **Full Context mode** in the chat settings. It
 passes the whole document instead of searching it, and usually answers better.
-Leave it off for long documents.
+Leave it off for long ones.
 
-**Starting it again:** start Docker Desktop, then run `docker compose up -d`.
+**Restart:** start Docker Desktop, then `docker compose up -d`.
 
-**Going offline:** after setup, no internet is needed. Everything runs locally.
+**Offline:** after setup, no internet is needed.
+
+---
+
+## Configuration
+
+All of it sits in `docker-compose.yml`. Variable names and defaults are from the
+[Open WebUI environment reference](https://docs.openwebui.com/reference/env-configuration).
+
+| Setting | Value | Why |
+|---|---|---|
+| `OLLAMA_BASE_URL` | `http://host.docker.internal:11434` | Ollama listens on the host; `localhost` inside a container means the container itself |
+| `RAG_EMBEDDING_ENGINE` | `ollama` | Embed on the host rather than downloading a second model into the container |
+| `RAG_EMBEDDING_MODEL` | `nomic-embed-text` | Small and well suited to retrieval |
+| `RAG_EMBEDDING_CONTENT_PREFIX` | `search_document: ` | **Required by nomic-embed-text.** The reference names this exact string |
+| `RAG_EMBEDDING_QUERY_PREFIX` | `search_query: ` | The counterpart, likewise named in the reference |
+| `CONTENT_EXTRACTION_ENGINE` | `docling` | Use Docling instead of the built-in text loader |
+| `DOCLING_SERVER_URL` | `http://docling:5001` | Matches the service name; this is also Docling's documented default |
+| `DOCLING_PARAMS` | see file | Docling's processing options, described in the reference as "the primary configuration method" |
+| `DOCLING_SERVE_ENABLE_REMOTE_SERVICES` | `true` | Without it Docling refuses to call Ollama; see [Docling usage](https://github.com/docling-project/docling-serve/blob/main/docs/usage.md) |
+| `UVICORN_WORKERS` | `1` | More than one worker makes uploads fail with "Task not found" |
+| `DOCLING_SERVE_MAX_SYNC_WAIT` | `600` | Default is 120s, too short for describing many figures |
+
+`DOCLING_PARAMS` turns on `do_picture_description` and points it at Ollama's
+OpenAI-compatible endpoint. The field names inside `picture_description_api` —
+`url`, `params`, `timeout`, `prompt` — are Docling's, not ours; see the
+[picture description section of the Docling usage docs](https://github.com/docling-project/docling-serve/blob/main/docs/usage.md#picture-description).
+
+To also read the *numbers* out of charts, add `"do_chart_extraction": true` to
+`DOCLING_PARAMS` and re-index. It is off by default because it downloads an
+extra model inside the container on first use, which needs internet.
 
 ---
 
@@ -142,50 +172,32 @@ Leave it off for long documents.
 
 ```
 PDF
- └─ Docling: OCR, table structure, and figure/chart descriptions
-             (figures described by ibm/granite3.3-vision:2b)
-     └─ Open WebUI: chunks, embeds with nomic-embed-text, stores locally
-         └─ You ask a question
-             └─ Open WebUI retrieves the matching chunks
-                 └─ granite4.2:8b answers, grounded in those chunks
+ └─ docling:  text, tables, and written descriptions of figures and charts
+             (descriptions generated by ibm/granite3.3-vision:2b via Ollama)
+     └─ open-webui:  chunks it, embeds it with nomic-embed-text, stores it locally
+         └─ you ask a question
+             └─ open-webui retrieves the matching chunks
+                 └─ granite4.2:8b answers from those chunks
 ```
 
-Ollama runs as a normal host application rather than a container, because
-graphics-card access is simpler and better supported that way.
+Ollama runs on the host rather than in a container so it can use the graphics
+card directly — the arrangement both projects document.
 
 ---
 
-## Optional: turn on chart number extraction
+## Sources
 
-Docling can also read the *numbers* out of bar, line and pie charts, not just
-describe them. Add one line to `docling-settings.json` and re-index:
+Everything above is taken from these; they are the place to check first.
 
-```json
-"do_chart_extraction": true
-```
-
-Left off by default because it needs an extra model download inside the
-container on first use, which must happen while the machine is online.
-
----
-
-## Files
-
-| File | Purpose |
+| Document | Used for |
 |---|---|
-| `docker-compose.yml` | Runs Open WebUI and Docling |
-| `docling-settings.json` | Pasted into Open WebUI in step 5 |
-| `README.md` | This document |
-
----
-
-## Documentation
-
-- Open WebUI + Docling (official guide) — https://docs.openwebui.com/features/chat-conversations/rag/document-extraction/docling
-- Open WebUI + Ollama, including `num_ctx` — https://docs.openwebui.com/getting-started/quick-start/connect-a-provider/starting-with-ollama
-- Ollama context length — https://docs.ollama.com/context-length
-- Docling Serve — https://github.com/docling-project/docling-serve
-- Docling conversion options — https://github.com/docling-project/docling-serve/blob/main/docs/usage.md
+| [Open WebUI — environment reference](https://docs.openwebui.com/reference/env-configuration) | Every variable name, default and allowed value |
+| [Open WebUI — Docling extraction](https://docs.openwebui.com/features/chat-conversations/rag/document-extraction/docling) | Installing Docling, and why nested options must be JSON strings |
+| [Open WebUI — starting with Ollama](https://docs.openwebui.com/getting-started/quick-start/connect-a-provider/starting-with-ollama) | `num_ctx` versus `OLLAMA_CONTEXT_LENGTH` |
+| [Ollama — context length](https://docs.ollama.com/context-length) | Default window sizes and how to change them |
+| [Docling Serve](https://github.com/docling-project/docling-serve) | Container images, sizes, ports |
+| [Docling Serve — usage](https://github.com/docling-project/docling-serve/blob/main/docs/usage.md) | Conversion options, picture description, remote services |
+| [Docling Serve — configuration](https://github.com/docling-project/docling-serve/blob/main/docs/configuration.md) | Server environment variables and presets |
 
 ---
 
@@ -193,9 +205,9 @@ container on first use, which must happen while the machine is online.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Upload fails with `Task not found` | Docling running more than one worker | Keep `UVICORN_WORKERS: "1"`, then `docker compose up -d` |
-| `Connections to remote services is only allowed when set explicitly` | Docling blocked from calling Ollama | Keep `DOCLING_SERVE_ENABLE_REMOTE_SERVICES: "true"` |
-| `Invalid JSON for field ...` | Docling Parameters filled incorrectly | Re-paste `docling-settings.json` exactly, backslashes included |
-| Figures get no description | The picture settings were not applied | Check `DOCLING_SERVER_URL` is `http://docling:5001` and that step 5 was saved |
-| Answers ignore most of the document | Memory window too small | Redo step 6 |
+| Questions work but figures are never described | Docling could not reach Ollama | Check `DOCLING_SERVE_ENABLE_REMOTE_SERVICES: "true"`, then `docker compose logs docling` |
+| Open WebUI reports it cannot reach the document extractor | Wrong URL | `DOCLING_SERVER_URL` must be `http://docling:5001`, matching the service name |
+| Upload fails with `Task not found` | More than one Docling worker | Keep `UVICORN_WORKERS: "1"`, then `docker compose up -d` |
+| Answers ignore most of the document | Memory window too small | Redo step 5, and leave `num_ctx` blank |
+| No models listed in Open WebUI | Page loaded before models finished, or Ollama unreachable | Press `Ctrl+F5`; then `curl http://localhost:11434/api/tags` |
 | Website will not open | Docker not running | Start Docker Desktop, then `docker compose up -d` |

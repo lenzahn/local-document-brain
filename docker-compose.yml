@@ -1,14 +1,20 @@
 # Local Document Brain
-# Start everything with:  docker compose up -d
 #
-# Ollama is not a service here on purpose. It runs as a normal application on
-# the host, so it can use the graphics card directly.
+# Start everything:   docker compose up -d
+#
+# Ollama is deliberately not a service here. It runs as a normal application on
+# the host so it can use the graphics card directly, which is the setup Ollama
+# and Open WebUI both document.
+#
+# Every setting lives in this file. Nothing needs configuring in a browser.
+# Variable names and defaults below are taken from the Open WebUI environment
+# reference: https://docs.openwebui.com/reference/env-configuration
 
 name: local-document-brain
 
 services:
 
-  # The chat interface. Also handles chunking, embedding and retrieval.
+  # Chat interface, chunking, embedding, retrieval.
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
     ports:
@@ -16,28 +22,39 @@ services:
     volumes:
       - open-webui:/app/backend/data
     environment:
-      # Where Ollama is listening.
+      # Ollama, running on the host.
       OLLAMA_BASE_URL: http://host.docker.internal:11434
       RAG_OLLAMA_BASE_URL: http://host.docker.internal:11434
 
       # Embeddings, served by Ollama.
-      # nomic-embed-text requires these two task prefixes on every input.
+      # nomic-embed-text requires a task prefix on both documents and queries;
+      # omitting them degrades retrieval silently.
       RAG_EMBEDDING_ENGINE: ollama
       RAG_EMBEDDING_MODEL: nomic-embed-text
-      RAG_EMBEDDING_QUERY_PREFIX: "search_query: "
       RAG_EMBEDDING_CONTENT_PREFIX: "search_document: "
+      RAG_EMBEDDING_QUERY_PREFIX: "search_query: "
 
       # Read documents with the docling service below.
       CONTENT_EXTRACTION_ENGINE: docling
       DOCLING_SERVER_URL: http://docling:5001
+
+      # Docling processing options, passed through as-is.
+      # picture_description_api stays a JSON *string* on purpose: Open WebUI
+      # forwards each key to docling-serve as its own form field, and Docling
+      # parses its nested options out of a string.
+      DOCLING_PARAMS: |
+        {
+          "do_picture_description": true,
+          "picture_description_api": "{\"url\": \"http://host.docker.internal:11434/v1/chat/completions\", \"params\": {\"model\": \"ibm/granite3.3-vision:2b\"}, \"timeout\": 180, \"prompt\": \"Describe this picture, chart or diagram in detail. Transcribe every label, axis value, number and table cell exactly as shown. If it is a chart, list the data points. Do not guess.\"}"
+        }
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
       - docling
     restart: unless-stopped
 
-  # The document reader. Turns PDF pages into text, tables, and descriptions of
-  # figures and charts. It calls Ollama to write those descriptions.
+  # Document reader. Turns PDF pages into text, tables, and written
+  # descriptions of figures and charts. It calls Ollama for the descriptions.
   docling:
     image: quay.io/docling-project/docling-serve
     ports:
@@ -46,7 +63,7 @@ services:
       DOCLING_SERVE_ENABLE_UI: "true"
       # Required, or Docling refuses to call Ollama.
       DOCLING_SERVE_ENABLE_REMOTE_SERVICES: "true"
-      # Give slow documents room to finish.
+      # Room for slow documents; default is 120 seconds.
       DOCLING_SERVE_MAX_SYNC_WAIT: "600"
       # Must stay 1. With more workers, uploads fail with "Task not found".
       UVICORN_WORKERS: "1"
