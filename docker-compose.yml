@@ -1,14 +1,18 @@
 # Local Document Brain
 #
-# Start everything:   docker compose up -d
+# Normal use: double-click start.cmd (or the desktop shortcut it creates).
+# Manual use: docker compose up -d
 #
 # Ollama is deliberately not a service here. It runs as a normal application on
-# the host so it can use the graphics card directly, which is the setup Ollama
-# and Open WebUI both document.
+# the host so it can use the graphics card directly, which is the arrangement
+# both Ollama and Open WebUI document.
 #
-# Every setting lives in this file. Nothing needs configuring in a browser.
-# Variable names and defaults below are taken from the Open WebUI environment
-# reference: https://docs.openwebui.com/reference/env-configuration
+# host.docker.internal is how the containers reach it. Verified on Docker
+# Desktop: it resolves to the host and reaches a service bound to 127.0.0.1,
+# which is exactly how Ollama listens by default.
+#
+# Image versions are pinned on purpose. Floating tags would silently change
+# behaviour under a deployment that is meant to just keep working.
 
 name: local-document-brain
 
@@ -16,7 +20,7 @@ services:
 
   # Chat interface, chunking, embedding, retrieval.
   open-webui:
-    image: ghcr.io/open-webui/open-webui:main
+    image: ghcr.io/open-webui/open-webui:0.11.2
     ports:
       - "3000:8080"
     volumes:
@@ -27,8 +31,7 @@ services:
       RAG_OLLAMA_BASE_URL: http://host.docker.internal:11434
 
       # Embeddings, served by Ollama.
-      # nomic-embed-text requires a task prefix on both documents and queries;
-      # omitting them degrades retrieval silently.
+      # nomic-embed-text requires a task prefix on both documents and queries.
       RAG_EMBEDDING_ENGINE: ollama
       RAG_EMBEDDING_MODEL: nomic-embed-text
       RAG_EMBEDDING_CONTENT_PREFIX: "search_document: "
@@ -56,7 +59,7 @@ services:
   # Document reader. Turns PDF pages into text, tables, and written
   # descriptions of figures and charts. It calls Ollama for the descriptions.
   docling:
-    image: quay.io/docling-project/docling-serve
+    image: quay.io/docling-project/docling-serve:v1.33.0
     ports:
       - "5001:5001"
     environment:
