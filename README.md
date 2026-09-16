@@ -31,6 +31,7 @@ every setting lives in `docker-compose.yml`.
 |---|---|
 | Ollama | https://ollama.com/download |
 | Docker Desktop | https://www.docker.com/products/docker-desktop/ |
+| Git | https://git-scm.com/downloads |
 | Machine | 16 GB RAM, 20 GB free disk, Windows 10/11, macOS or Linux |
 
 Downloads, once: **8.7 GB** of Docling image on x86-64 — 4.4 GB on ARM —
@@ -61,17 +62,10 @@ git clone https://github.com/lenzahn/local-document-brain
 cd local-document-brain
 ```
 
-### 3. Start the services
+### 3. Download the models
 
-```bash
-docker compose up -d
-docker compose ps
-```
-
-Both `open-webui` and `docling` must show `running`. If either shows `exited` or
-`restarting`, run `docker compose logs` and stop.
-
-### 4. Download the models
+Do this before starting the services, so Open WebUI finds every model on its
+first boot.
 
 ```bash
 ollama pull granite4.2:8b
@@ -82,7 +76,7 @@ ollama list
 
 `ollama list` must show all three.
 
-### 5. Raise the memory window
+### 4. Raise the memory window
 
 Ollama's default context window is small, so set it once at the operating
 system level. On Windows:
@@ -101,21 +95,32 @@ setting, and its control pre-fills with `2048`, which caps the model at a few
 pages. See
 [Open WebUI — starting with Ollama](https://docs.openwebui.com/getting-started/quick-start/connect-a-provider/starting-with-ollama).
 
+### 5. Start the services
+
+```bash
+docker compose up -d
+docker compose ps
+```
+
+Both `open-webui` and `docling` must show `running`. If either shows `exited` or
+`restarting`, run `docker compose logs` and stop.
+
 ### 6. Open it
 
 Go to **http://localhost:3000** and create the first account. It becomes the
-administrator. Press `Ctrl+F5` once — Open WebUI can boot before the models
-finish downloading, so the model list may look empty until the page reloads.
-
-That is the whole setup. There is nothing to configure in Open WebUI's admin
-panel; step 7 below only confirms it.
+administrator. That is the whole setup — there is nothing to configure in the
+admin panel, and step 7 only confirms it.
 
 ### 7. Verify
 
-```bash
-curl -s -o /dev/null -w "%{http_code}\n" http://localhost:5001/ui   # reader
-curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000      # website
+On Windows (`curl` alone is a PowerShell alias, so call `curl.exe`):
+
+```powershell
+curl.exe -s -o NUL -w "%{http_code}`n" http://localhost:5001/ui   # reader
+curl.exe -s -o NUL -w "%{http_code}`n" http://localhost:3000      # website
 ```
+
+On macOS and Linux, use `-o /dev/null` instead of `-o NUL`.
 
 The first must print `200`. The second must print `200`, `302` or `307`.
 
@@ -209,5 +214,5 @@ Everything above is taken from these; they are the place to check first.
 | Open WebUI reports it cannot reach the document extractor | Wrong URL | `DOCLING_SERVER_URL` must be `http://docling:5001`, matching the service name |
 | Upload fails with `Task not found` | More than one Docling worker | Keep `UVICORN_WORKERS: "1"`, then `docker compose up -d` |
 | Answers ignore most of the document | Memory window too small | Redo step 5, and leave `num_ctx` blank |
-| No models listed in Open WebUI | Page loaded before models finished, or Ollama unreachable | Press `Ctrl+F5`; then `curl http://localhost:11434/api/tags` |
+| No models listed in Open WebUI | Ollama unreachable from the container | Press `Ctrl+F5`; then `curl.exe http://localhost:11434/api/tags`. If that works but Open WebUI stays empty, set `OLLAMA_HOST` to `0.0.0.0:11434` and restart Ollama |
 | Website will not open | Docker not running | Start Docker Desktop, then `docker compose up -d` |
