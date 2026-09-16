@@ -1,0 +1,48 @@
+# Local Document Brain
+# Start everything with:  docker compose up -d
+#
+# Ollama is not listed here on purpose. It runs as a normal host application,
+# where graphics-card access is simpler and better supported.
+
+name: local-document-brain
+
+services:
+
+  # The chat interface. Also handles chunking, embedding and retrieval.
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    ports:
+      - "3000:8080"
+    volumes:
+      - open-webui:/app/backend/data
+    environment:
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      RAG_OLLAMA_BASE_URL: http://host.docker.internal:11434
+      RAG_EMBEDDING_ENGINE: ollama
+      RAG_EMBEDDING_MODEL: nomic-embed-text
+      CONTENT_EXTRACTION_ENGINE: docling
+      DOCLING_SERVE_URL: http://docling-serve:5001
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - docling-serve
+    restart: unless-stopped
+
+  # The document reader. Turns PDF pages into text, tables and figure
+  # descriptions. It calls Ollama to describe figures and charts.
+  docling-serve:
+    image: quay.io/docling-project/docling-serve
+    ports:
+      - "5001:5001"
+    environment:
+      DOCLING_SERVE_ENABLE_UI: "true"
+      DOCLING_SERVE_ENABLE_REMOTE_SERVICES: "true"
+      DOCLING_SERVE_MAX_SYNC_WAIT: "600"
+      # Must stay 1. With more workers, uploads fail with "Task not found".
+      UVICORN_WORKERS: "1"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+volumes:
+  open-webui:
