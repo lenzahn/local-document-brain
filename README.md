@@ -117,6 +117,28 @@ That is all. There is nothing to configure in Open WebUI's admin panel.
 
 ---
 
+## Confirm it is working
+
+Two checks worth doing once, because the most likely failure is a silent one.
+
+**1. The picture-description settings actually arrived.** Open WebUI reads
+`DOCLING_PARAMS` once, on first start. If it cannot parse the value it falls
+back to an empty object — *without any error* — and figures and charts are then
+simply never described. You would get a working chat that quietly ignores every
+diagram.
+
+Go to **Admin Settings → Documents** and confirm the **Docling Parameters**
+field is filled in with the JSON that is in `docker-compose.yml`. If it is
+empty, the value did not survive the trip; the YAML block in
+`docker-compose.yml` is where to look.
+
+**2. The reader works on its own.** Open **http://localhost:5001/ui** and drop a
+PDF onto it. You should get markdown back, with tables as real tables and a
+written description wherever there was a figure or chart. This tests the reader
+without the chat, so if answers are poor you know which half is at fault.
+
+---
+
 ## Using it
 
 1. **Workspace → Knowledge → Create Knowledge**, name it.
@@ -162,8 +184,10 @@ All of it sits in `docker-compose.yml`. Variable names and defaults come from th
 | `UVICORN_WORKERS` | `1` | More than one worker makes uploads fail with "Task not found" |
 | `DOCLING_SERVE_MAX_SYNC_WAIT` | `600` | Default is 120s, too short for describing many figures |
 
-Images are pinned to `open-webui:0.11.2` and `docling-serve:v1.33.0` so a
-deployment does not change behaviour underneath you. Both projects also publish
+Images are pinned to `open-webui:0.11.3` and `docling-serve:v1.33.0` so a
+deployment does not change behaviour underneath you. Both tags were checked to
+exist, and every variable above was checked to exist in that exact Open WebUI
+release rather than on the development branch. Both projects also publish
 `main`/`latest` if you would rather track them.
 
 `DOCLING_PARAMS` turns on `do_picture_description` and points it at Ollama's

@@ -20,7 +20,7 @@ services:
 
   # Chat interface, chunking, embedding, retrieval.
   open-webui:
-    image: ghcr.io/open-webui/open-webui:0.11.2
+    image: ghcr.io/open-webui/open-webui:0.11.3
     ports:
       - "3000:8080"
     volumes:
