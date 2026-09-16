@@ -64,8 +64,8 @@ docker compose up -d
 docker compose ps
 ```
 
-Both `open-webui` and `docling-serve` must show `running`. If either shows
-`exited` or `restarting`, run `docker compose logs` and stop.
+Both `open-webui` and `docling` must show `running`. If either shows `exited` or
+`restarting`, run `docker compose logs` and stop.
 
 ### 4. Download the AI models
 
@@ -88,13 +88,13 @@ becomes the administrator. Then, in **Admin Settings → Documents**:
 | Setting | Value |
 |---|---|
 | Content Extraction Engine | `Docling` |
-| Extraction Engine URL | `http://docling-serve:5001` |
+| Extraction Engine URL | `http://docling:5001` |
 | Embedding Engine | `Ollama` |
 | Embedding Model | `nomic-embed-text` |
 | Docling Parameters | paste the entire contents of `docling-settings.json` |
 
-Save. Then press `Ctrl+F5` to refresh — Open WebUI can start before the models
-finish downloading, so the model list may look empty until then.
+Save, then press `Ctrl+F5`. Open WebUI can start before the models finish
+downloading, so the model list may look empty until the page is refreshed.
 
 ### 6. **[HUMAN]** Raise the model's memory window
 
@@ -155,6 +155,20 @@ graphics-card access is simpler and better supported that way.
 
 ---
 
+## Optional: turn on chart number extraction
+
+Docling can also read the *numbers* out of bar, line and pie charts, not just
+describe them. Add one line to `docling-settings.json` and re-index:
+
+```json
+"do_chart_extraction": true
+```
+
+Left off by default because it needs an extra model download inside the
+container on first use, which must happen while the machine is online.
+
+---
+
 ## Files
 
 | File | Purpose |
@@ -171,6 +185,7 @@ graphics-card access is simpler and better supported that way.
 - Open WebUI + Ollama, including `num_ctx` — https://docs.openwebui.com/getting-started/quick-start/connect-a-provider/starting-with-ollama
 - Ollama context length — https://docs.ollama.com/context-length
 - Docling Serve — https://github.com/docling-project/docling-serve
+- Docling conversion options — https://github.com/docling-project/docling-serve/blob/main/docs/usage.md
 
 ---
 
@@ -181,5 +196,6 @@ graphics-card access is simpler and better supported that way.
 | Upload fails with `Task not found` | Docling running more than one worker | Keep `UVICORN_WORKERS: "1"`, then `docker compose up -d` |
 | `Connections to remote services is only allowed when set explicitly` | Docling blocked from calling Ollama | Keep `DOCLING_SERVE_ENABLE_REMOTE_SERVICES: "true"` |
 | `Invalid JSON for field ...` | Docling Parameters filled incorrectly | Re-paste `docling-settings.json` exactly, backslashes included |
+| Figures get no description | The picture settings were not applied | Check `DOCLING_SERVER_URL` is `http://docling:5001` and that step 5 was saved |
 | Answers ignore most of the document | Memory window too small | Redo step 6 |
 | Website will not open | Docker not running | Start Docker Desktop, then `docker compose up -d` |

@@ -1,9 +1,4 @@
 {
-  "do_ocr": true,
-  "pdf_backend": "dlparse_v4",
-  "table_mode": "accurate",
-  "ocr_engine": "tesseract",
-  "ocr_lang": ["eng"],
   "do_picture_description": true,
   "picture_description_api": "{\"url\": \"http://host.docker.internal:11434/v1/chat/completions\", \"params\": {\"model\": \"ibm/granite3.3-vision:2b\"}, \"timeout\": 180, \"prompt\": \"Describe this picture, chart or diagram in detail. Transcribe every label, axis value, number and table cell exactly as shown. If it is a chart, list the data points. Do not guess.\"}"
 }

@@ -1,8 +1,8 @@
 # Local Document Brain
 # Start everything with:  docker compose up -d
 #
-# Ollama is not listed here on purpose. It runs as a normal host application,
-# where graphics-card access is simpler and better supported.
+# Ollama is not a service here on purpose. It runs as a normal application on
+# the host, so it can use the graphics card directly.
 
 name: local-document-brain
 
@@ -16,27 +16,37 @@ services:
     volumes:
       - open-webui:/app/backend/data
     environment:
+      # Where Ollama is listening.
       OLLAMA_BASE_URL: http://host.docker.internal:11434
       RAG_OLLAMA_BASE_URL: http://host.docker.internal:11434
+
+      # Embeddings, served by Ollama.
+      # nomic-embed-text requires these two task prefixes on every input.
       RAG_EMBEDDING_ENGINE: ollama
       RAG_EMBEDDING_MODEL: nomic-embed-text
+      RAG_EMBEDDING_QUERY_PREFIX: "search_query: "
+      RAG_EMBEDDING_CONTENT_PREFIX: "search_document: "
+
+      # Read documents with the docling service below.
       CONTENT_EXTRACTION_ENGINE: docling
-      DOCLING_SERVE_URL: http://docling-serve:5001
+      DOCLING_SERVER_URL: http://docling:5001
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
-      - docling-serve
+      - docling
     restart: unless-stopped
 
-  # The document reader. Turns PDF pages into text, tables and figure
-  # descriptions. It calls Ollama to describe figures and charts.
-  docling-serve:
+  # The document reader. Turns PDF pages into text, tables, and descriptions of
+  # figures and charts. It calls Ollama to write those descriptions.
+  docling:
     image: quay.io/docling-project/docling-serve
     ports:
       - "5001:5001"
     environment:
       DOCLING_SERVE_ENABLE_UI: "true"
+      # Required, or Docling refuses to call Ollama.
       DOCLING_SERVE_ENABLE_REMOTE_SERVICES: "true"
+      # Give slow documents room to finish.
       DOCLING_SERVE_MAX_SYNC_WAIT: "600"
       # Must stay 1. With more workers, uploads fail with "Task not found".
       UVICORN_WORKERS: "1"
